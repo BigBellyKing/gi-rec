@@ -582,6 +582,24 @@ async function main(){
     content.appendChild(createInlineHint());
 
     const toggleWrap = createEl('div','best-teams-toggle');
+
+    const labelTarget = createEl('label', 'toggle-label');
+    labelTarget.textContent = 'Target: ';
+    const selectTarget = createEl('select', 'side-input toggle-select');
+    selectTarget.id = 'tier-target-mode';
+    selectTarget.style.marginRight = '12px';
+    const optUnowned = createEl('option'); optUnowned.value = 'unowned'; optUnowned.textContent = 'Recommendations';
+    const optOwned = createEl('option'); optOwned.value = 'owned'; optOwned.textContent = 'My Characters';
+    selectTarget.appendChild(optUnowned);
+    selectTarget.appendChild(optOwned);
+    try{ const saved = localStorage.getItem('tierTargetMode'); if(saved) selectTarget.value = saved; }catch{}
+    selectTarget.addEventListener('change', ()=>{
+      try{ localStorage.setItem('tierTargetMode', selectTarget.value); }catch{}
+      renderTier();
+    });
+    labelTarget.appendChild(selectTarget);
+    toggleWrap.appendChild(labelTarget);
+
     const label = createEl('label', 'toggle-label');
     label.textContent = 'Sorting: ';
     const select = createEl('select','side-input toggle-select');
@@ -614,8 +632,9 @@ async function main(){
     renderFilters(filtersDiv, 'main');
 
     const sortMode = select.value || 'best';
+    const targetMode = selectTarget.value || 'unowned';
     const pred = makeFilterPredicate('main');
-    const tierData = buildTierlist(names, teams, owned, maxShow, mode, sortMode).filter(item=> pred(item.name));
+    const tierData = buildTierlist(names, teams, owned, maxShow, mode, sortMode, targetMode).filter(item=> pred(item.name));
 
     const wrap = createEl('div');
     const area = createEl('div'); area.id = 'tierlist'; area.className = 'tier-grid';
@@ -902,12 +921,14 @@ function renderSuggestions(list, keyByDisplay, maxShow){
   }
 }
 
-function buildTierlist(names, teams, ownedDisplaySet, maxShow=3, mode=1, sortMode='best'){
+function buildTierlist(names, teams, ownedDisplaySet, maxShow=3, mode=1, sortMode='best', target='unowned'){
   const results = [];
   const allDisplayNames = Object.values(names).map(v=> (v && typeof v==='object')? v.name : v);
   for(const disp of allDisplayNames){
-    if(ownedDisplaySet && ownedDisplaySet.has(disp)){
-      continue;
+    if(target === 'unowned'){
+      if(ownedDisplaySet && ownedDisplaySet.has(disp)) continue;
+    } else {
+      if(!ownedDisplaySet || !ownedDisplaySet.has(disp)) continue;
     }
     const candidates = [];
     for(const s of teams){
